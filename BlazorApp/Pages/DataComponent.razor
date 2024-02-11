@@ -1,0 +1,82 @@
+﻿@page "/DataComponent"
+@using System.Net.Http.Json
+@using BlazorApp.Services
+@using BlazorApp.Models
+@inject IProducts Api
+
+<MudDataGrid T="Product" Items="@Elements" ReadOnly="@_readOnly" EditMode="@(_isCellEditMode ? DataGridEditMode.Cell : DataGridEditMode.Form)"
+             StartedEditingItem="@StartedEditingItem" CanceledEditingItem="@CanceledEditingItem" CommittedItemChanges="@CommittedItemChanges"
+             Bordered="true" Dense="true" EditTrigger="@(_editTriggerRowClick ? DataGridEditTrigger.OnRowClick : DataGridEditTrigger.Manual)">
+    <Columns>
+        <PropertyColumn Property="x => x.Id" Title="Nr" IsEditable="false" />
+        <PropertyColumn Property="x => x.ProductName" />
+        <PropertyColumn Property="x => x.Quantity" />
+        <PropertyColumn Property="x => x.Price">
+            <EditTemplate>
+            </EditTemplate>
+        </PropertyColumn>
+        <TemplateColumn Hidden="@(_isCellEditMode || _readOnly || _editTriggerRowClick)" CellClass="d-flex justify-end">
+            <CellTemplate>
+                <MudIconButton Size="@Size.Small" Icon="@Icons.Material.Outlined.Edit" OnClick="@context.Actions.StartEditingItemAsync" />
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+</MudDataGrid>
+
+<div style="display: flex; justify-content: center;" class="mt-6">
+    <MudButton @onclick="ShowAlerts" Variant="Variant.Filled" Color="Color.Primary">Show Alert</MudButton>
+</div>
+@if (showCallAlert)
+{
+    <MudAlert Severity="Severity.Success" ContentAlignment="HorizontalAlignment.Center" ShowCloseIcon="true" CloseIconClicked="(() => CloseMe(true))">Time to call. Please close me!</MudAlert>
+}
+
+@code {
+    private IEnumerable<Product> Elements = new List<Product>();
+    private bool _readOnly;
+    private bool _isCellEditMode;
+    private List<string> _events = new();
+    private bool _editTriggerRowClick;
+    RequestProductDTO request = new RequestProductDTO();
+    private bool showCallAlert = false;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (request.productName is null)
+        {
+            request.productName = "";
+        }
+        Elements = await Api.GetAllProducts(request);
+        // Elements = await httpClient.GetFromJsonAsync<List<Product>>("Product/UpdateProduct");
+    }
+
+    // events
+    void StartedEditingItem(Product item)
+    {
+        _events.Insert(0, $"Event = StartedEditingItem, Data = {System.Text.Json.JsonSerializer.Serialize(item)}");
+    }
+
+    void CanceledEditingItem(Product item)
+    {
+        _events.Insert(0, $"Event = CanceledEditingItem, Data = {System.Text.Json.JsonSerializer.Serialize(item)}");
+    }
+
+    void CommittedItemChanges(Product item)
+    {
+        _events.Insert(0, $"Event = CommittedItemChanges, Data = {System.Text.Json.JsonSerializer.Serialize(item)}");
+    }
+
+    private void ShowAlerts()
+    {
+        showCallAlert = true;
+    }
+
+    private void CloseMe(bool value)
+    {
+        if (value)
+        {
+            showCallAlert = false;
+        }
+    }
+}
